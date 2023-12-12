@@ -57,7 +57,8 @@ func (s *Session) ListWindows() ([]Window, error) {
 	args := []string{
 		"list-windows",
 		"-t", s.Name,
-		"-F", "#{window_id}:#{window_name}:#{pane_current_path}"}
+		"-F", "#{window_id}:#{window_index}:#{window_name}:#{pane_current_path}",
+	}
 
 	out, _, err := RunCmd(args)
 	if err != nil {
@@ -66,10 +67,10 @@ func (s *Session) ListWindows() ([]Window, error) {
 
 	outLines := strings.Split(out, "\n")
 	windows := []Window{}
-	re := regexp.MustCompile(`@([0-9]+):(.+):(.+)`)
+	re := regexp.MustCompile(`@([0-9]+):([0-9]+):(.+):(.+)`)
 	for _, line := range outLines {
 		result := re.FindStringSubmatch(line)
-		if len(result) < 4 {
+		if len(result) < 5 {
 			continue
 		}
 		id, err_atoi := strconv.Atoi(result[1])
@@ -77,12 +78,19 @@ func (s *Session) ListWindows() ([]Window, error) {
 			return nil, err_atoi
 		}
 
+		idx, err_atoi := strconv.Atoi(result[2])
+		if err_atoi != nil {
+			return nil, err_atoi
+		}
+
 		windows = append(windows, Window{
-			Name:           result[2],
+			Name:           result[3],
 			Id:             id,
-			StartDirectory: result[3],
+			Index:          idx,
+			StartDirectory: result[4],
 			SessionName:    s.Name,
-			SessionId:      s.Id})
+			SessionId:      s.Id,
+		})
 	}
 
 	return windows, nil
@@ -112,7 +120,8 @@ func (s *Session) AttachSession() error {
 func (s *Session) DettachSession() error {
 	args := []string{
 		"detach-client",
-		"-s", s.Name}
+		"-s", s.Name,
+	}
 	if err := ExecCmd(args); err != nil {
 		return err
 	}
@@ -126,7 +135,8 @@ func (s *Session) NewWindow(name string) (window Window, err error) {
 		"-d",
 		"-t", fmt.Sprintf("%s:", s.Name),
 		"-n", name,
-		"-F", "#{window_id}:#{window_name}", "-P"}
+		"-F", "#{window_id}:#{window_name}", "-P",
+	}
 	out, _, err_exec := RunCmd(args)
 	if err_exec != nil {
 		return window, err_exec
@@ -147,13 +157,15 @@ func (s *Session) NewWindow(name string) (window Window, err error) {
 		SessionName: s.Name,
 		WindowId:    id,
 		WindowName:  result[2],
-		WindowIndex: 0}
+		WindowIndex: 0,
+	}
 	new_window := Window{
 		Name:        result[2],
 		Id:          id,
 		SessionName: s.Name,
 		SessionId:   s.Id,
-		Panes:       []Pane{pane}}
+		Panes:       []Pane{pane},
+	}
 	return new_window, nil
 }
 
@@ -166,7 +178,8 @@ func (s *Session) ListPanes() ([]Pane, error) {
 func GetAttachedSessionName() (string, error) {
 	args := []string{
 		"display-message",
-		"-p", "#S"}
+		"-p", "#S",
+	}
 	out, _, err := RunCmd(args)
 	if err != nil {
 		return "", err

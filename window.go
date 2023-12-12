@@ -23,6 +23,7 @@ type Window struct {
 	StartDirectory string // Path to window working directory
 	Layout         string // Preset arrangements of panes
 	Panes          []Pane // List of panes used in initial window configuration
+	Index          int
 }
 
 // Creates a new window object.
